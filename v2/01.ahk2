@@ -1,0 +1,277 @@
+#Requires AutoHotkey v2.0
+
+;------------------------------------------------游戏为置顶窗口才会生效
+; #HotIf WinActive("ahk_exe Game.exe")
+; VirtualWidth := SysGet(16)  ; 屏幕宽度
+; VirtualHeight := SysGet(17) ; 屏幕高度
+; ProcessSetPriority("High")  ; 提升进程优先级
+; CoordMode "ToolTip", "Screen"
+; ;------------------------------------------------定义函数
+; GetColor(x, y) {
+;     CoordMode("Pixel", "Screen")  ; 确保 PixelGetColor 使用屏幕坐标模式
+;     color := PixelGetColor(x, y, "RGB") 
+;     return color
+; }
+
+; #HotIf
+
+;------------------------------------------------全局设置
+CoordMode("Pixel", "Window")  ; 确保 PixelGetColor 使用屏幕坐标模式
+CoordMode("ToolTip", "Screen")
+Persistent(true)
+#SingleInstance 
+ProcessSetPriority("High")  ; 提升进程优先级
+
+;------------------------------------------------定义全局变量
+clickState_left := false
+sendState_f := false
+clickState_x := false
+clickState_m := false
+mouseMove_f2 := false
+
+;------------------------------------------------定义函数
+; 1,2,3,4
+
+GetColor(x, y) {
+    color := PixelGetColor(x, y, "RGB") 
+    return color
+}
+
+leftClick() {
+    Click()
+}
+
+checkColor_m(){
+    if (GetColor(100, 100) == 0x00FF00) {
+        Click("L", 100, 100)
+        closeClick_m()
+    }
+}
+
+switchClick(time := 100) {
+    global clickState_left
+    clickState_left := !clickState_left
+
+    if (clickState_left) {
+        SetTimer(leftClick, time, 1)
+        ; ToolTip("已开启点击，间隔: " time "ms", 1000, 50, 1)
+        ToolTip("on", 1000, 20, 1)
+    } else {
+        SetTimer(leftClick, 0, 1)
+        ToolTip("", 0, 0, 1)
+    }
+}
+
+mouseMove_R() {
+    MouseMove(1, 1, 1, "R")
+    Sleep(100)
+    MouseMove(-1, -1, 1, "R")
+}
+
+switchMove_f2(time := 100) {
+    global mouseMove_f2
+    mouseMove_f2 := !mouseMove_f2
+
+    if (mouseMove_f2) {
+        SetTimer(mouseMove_R, time, 6)
+        ToolTip("on", 1000, 20, 6)
+    } else {
+        SetTimer(mouseMove_R, 0, 6)
+        ToolTip("", 0, 0, 6)
+    }
+}
+
+switchClick_x(time := 100) {
+    global clickState_x
+    clickState_x := !clickState_x
+
+    if (clickState_x) {
+        SetTimer(leftClick, time, 3)
+        ToolTip("x", 950, 20, 3)
+    } else {
+        SetTimer(leftClick, 0, 3)
+        ToolTip("", 0, 0, 3)
+    }
+}
+
+openClick_m() {
+    global clickState_m
+    clickState_m := true
+    SetTimer(checkColor_m, 100, 5)
+    ToolTip("m", 500, 20, 5)
+}
+closeClick_m() {
+    global clickState_m
+    clickState_m := false
+    SetTimer(checkColor_m, 100, 5)
+    ToolTip("", 500, 20, 5)
+}
+
+
+openSendf(time := 100) {
+    global sendState_f
+    sendState_f := !sendState_f
+
+    if (sendState_f) {
+        SetTimer(runSendf, time, 2)
+        ToolTip("已开启发送f", 900, 50, 2)
+    } else {
+        SetTimer(runSendf, 0, 2)
+        ToolTip("", 0, 0, 2)
+    }
+}
+
+runSendf() {
+    KeyWait("Alt")
+    KeyWait("Shift")
+    KeyWait("Tab")
+    Send("{f}")
+}
+
+; 在定时器没有启动时，不能直接设置关闭状态。可以根据状态变量进行判断，来关闭定时器。
+init() {
+    global clickState_left, sendState_f, clickState_x, clickState_m
+    if (clickState_left) {
+        clickState_left := false
+        ToolTip("", 0, 0, 1)
+        SetTimer(leftClick, 0, 1)
+    }
+    if (clickState_x) {
+        clickState_x := false
+        SetTimer(leftClick, 0, 3)
+        ToolTip("", 0, 0, 3)
+    }
+    if (sendState_f) {
+        sendState_f := false
+        SetTimer(runSendf, 0, 2)
+        ToolTip("", 0, 0, 2)
+    }
+    if (clickState_m) {
+        clickState_m := false
+        SetTimer(checkColor_m, 0, 5)
+        ToolTip("", 0, 0, 5)
+    }
+}
+
+
+
+; ------------------------------------------------全局快捷键
+; 不阻止自身事件，并解除其他指定窗口的定时器，初始化定时器状态
+; 全局快捷键，并且不会因为脚本停止而失效
+; *	通配符: 即使额外的修饰键被按住也能触发热键. 这常与重映射按键或按钮组合使用.
+; ~	触发热键时, 热键中按键原有的功能不会被屏蔽(对操作系统隐藏). 在下面的两个例子中, 用户的鼠标按钮点击会被发送到活动窗口:
+; $	通常只在脚本使用 Send 函数发送包含了热键自身的按键时才需要使用此符号, 此时可以避免触发它自己. $ 前缀强制使用键盘钩子来实现此热键, 作为副作用这样阻止了 Send 函数触发它自己. $ 前缀相当于在此热键定义之前的某个位置指定了 #UseHook.
+
+#SuspendExempt 
+$~Esc::{
+    init()
+}
+F4:: {
+    Suspend
+    if (A_IsSuspended) {
+        ToolTip("已暂停", 850, 20, 10)
+    } else {
+        ToolTip("", 0, 0, 10)
+    }
+}
+#SuspendExempt false
+
+; 普通全局快捷键
+F12::{
+    Reload()
+}
+
+f1::{
+    ; mouseX, mouseY := MouseGetPos()
+    ; PixelGetColor, color, mouseX, mouseY
+    ; PixelGetColor, color_rgb, mouseX, mouseY, RGB
+
+    ; info := "鼠标位置：X=" mouseX " Y=" mouseY " color=" color " rgb=" color_rgb
+    ; ; 将信息复制到剪切板
+    ; Clipboard := "GetColor(" mouseX ", " mouseY ") == """ GetColor(mouseX,mouseY) """"
+}
+
+F2::{
+    switchClick_x(1000)
+}
+F3::{
+    switchMove_f2(10000)
+    
+}
+
+; ------------------------------------------------指定窗口快捷键
+
+; #HotIf WinActive("ahk_exe Code.exe")
+
+; x::{
+;     switchClick_x(1000)
+; }
+; f::{
+;     A_Clipboard := "fsafdsfs"
+;     openSendf()
+; }
+; RButton::{
+;     SetTimer(leftClick, 100, 4)
+;     ToolTip("RButton", 500, 50, 4)
+; }
+; RButton Up::{
+;     SetTimer(leftClick, 0, 4)
+;     ToolTip("", 0, 0, 4)
+; }
+
+; p::
+; c::
+; v::
+; F2::
+; m::
+; {
+;     init()
+;     if (A_ThisHotkey == "p") {
+;         Send("{p}")
+;     } else if (A_ThisHotkey == "c") {
+;         Send("{c}")
+;     } else if (A_ThisHotkey == "v") {
+;         Send("{v}")
+;     } else if (A_ThisHotkey == "F2") {
+;         Send("{F2}")
+;     } else if (A_ThisHotkey == "m") {
+;         openClick_m()
+
+;     }
+; }
+
+; #HotIf 
+
+; #HotIf WinActive("ahk_exe Everything.exe")
+
+; x::{
+;     switchClick(200)
+; }
+
+; #HotIf
+
+; #HotIf WinActive("ahk_exe chrome.exe")
+
+; x::{
+;     switchClick(200)
+; }
+
+; #HotIf
+
+
+
+
+; HotIfWinActive("ahk_class Notepad")
+
+; x::{
+;     switchClick(200)
+; }
+
+; HotIfWinActive
+
+
+
+
+
+
+
